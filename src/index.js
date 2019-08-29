@@ -5,7 +5,8 @@ const reactivePropSetterMap = {
   data: 'resetData',
   columns: 'setColumns',
   bodyHeight: 'setBodyHeight',
-  frozenColumnCount: 'setFrozenColumnCount'
+  frozenColumnCount: 'setFrozenColumnCount',
+  columnOptions: 'setFrozenColumnCount'
 };
 
 export default class Grid extends React.Component {
@@ -35,15 +36,15 @@ export default class Grid extends React.Component {
   }
 
   componentDidMount() {
-    const {
-      frozenColumnCount: frozenCount = 0,
-      columnOptions: columnOptionsProp = {}
-    } = this.props;
+    const { frozenColumnCount: frozenCount, columnOptions: columnOptionsProp = {} } = this.props;
 
-    const columnOptions = {
-      ...columnOptionsProp,
-      frozenCount
-    };
+    const columnOptions =
+      typeof frozenCount === 'number'
+        ? {
+            ...columnOptionsProp,
+            frozenCount
+          }
+        : { ...columnOptionsProp };
 
     this.gridInst = new TuiGrid({
       el: this.rootEl.current,
@@ -53,6 +54,10 @@ export default class Grid extends React.Component {
     this.bindEventHandlers(this.props);
   }
 
+  componentWillUnmount() {
+    this.gridInst.destroy();
+  }
+
   shouldComponentUpdate(nextProps) {
     const { oneTimeBindingProps = [] } = this.props;
     const reactiveProps = Object.keys(reactivePropSetterMap).filter(
@@ -60,8 +65,15 @@ export default class Grid extends React.Component {
     );
 
     reactiveProps.forEach(propName => {
-      const currentValue = this.props[propName];
-      const nextValue = nextProps[propName];
+      let currentValue, nextValue;
+      if (propName === 'columnOptions' && this.props.columnOptions) {
+        currentValue = this.props.columnOptions.frozenCount;
+        nextValue = nextProps.columnOptions.frozenCount;
+      } else {
+        currentValue = this.props[propName];
+        nextValue = nextProps[propName];
+      }
+
       if (currentValue !== nextValue) {
         const setterName = reactivePropSetterMap[propName];
         this.gridInst[setterName](nextValue);
